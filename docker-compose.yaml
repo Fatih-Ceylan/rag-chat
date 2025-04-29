@@ -1,0 +1,11 @@
+# docker-compose.yaml (projenin kök dizinine)
+services:
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"      # HTTP / gRPC
+    volumes:
+      - ./qdrant_data:/qdrant/storage   # kalıcı disk
+    # Apple Silicon için resmi arm64 imaj; ek ayar gerekmez
