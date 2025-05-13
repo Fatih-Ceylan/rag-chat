@@ -29,10 +29,10 @@ function App() {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/documents');
+      const response = await fetch('http://localhost:4000/api/documents/list');
       const data = await response.json();
       if (data.success) {
-        setDocuments(data.data);
+        setDocuments(data.documents);
       }
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -75,7 +75,7 @@ function App() {
 
     try {
       console.log('[Debug] Sending request to chat endpoint');
-      const response = await fetch('http://localhost:4000/api/chat', {
+      const response = await fetch('http://localhost:4000/api/ask', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ function App() {
       if (data.success) {
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: data.data.content
+          content: data.content
         }]);
       } else {
         throw new Error(data.error || 'Bir hata oluştu');
@@ -129,13 +129,16 @@ function App() {
           </button>
         </div>
         <div className="documents-list">
-          <h3>Processed Documents</h3>
+          <h3>İşlenmiş PDF'ler</h3>
           {documents.length === 0 ? (
-            <p className="no-documents">No documents processed yet</p>
+            <p className="no-documents">Henüz işlenmiş PDF yok</p>
           ) : (
             <ul>
               {documents.map((doc, index) => (
-                <li key={index}>{doc}</li>
+                <li key={index} className="document-item">
+                  <span className="document-icon">📄</span>
+                  <span className="document-name">{doc}</span>
+                </li>
               ))}
             </ul>
           )}

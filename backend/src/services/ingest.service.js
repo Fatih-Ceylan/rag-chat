@@ -6,17 +6,17 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/hf_transformers";
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { QdrantVectorStore } from "@langchain/qdrant";
-const require = createRequire(import.meta.url);
 
+const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse");  
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
+const __dirname = path.dirname(__filename);
 
-// 1) Embeddings (intfloat/e5-small-v2 ≈ 384 dims; ilk run'da modeli indirir)
+// 1) Embeddings (daha hızlı model)
 const embeddings = new HuggingFaceTransformersEmbeddings({
-  modelName: "Xenova/e5-small-v2",
-  cacheDir: path.join(__dirname, ".models"),
+  modelName: "Xenova/all-MiniLM-L6-v2", // Daha hızlı ve hafif model
+  cacheDir: path.join(__dirname, "../../.models"),
 });
 
 // 2) Qdrant istemcisi
@@ -27,8 +27,21 @@ async function ensureCollection() {
   const exists = await qdrant.getCollections();
   if (!exists.collections.find(c => c.name === COLLECTION)) {
     await qdrant.createCollection(COLLECTION, {
-      vectors: { size: 384, distance: "Cosine" },
-      // öneri: `on_disk: true` → büyük veri için
+      vectors: { 
+        size: 384, // MiniLM modeli için vektör boyutu
+        distance: "Dot", // Cosine yerine Dot Product (daha hızlı)
+      },
+      optimizers_config: {
+        default_segment_number: 2, // Daha az segment
+        indexing_threshold: 0, // Hemen indeksle
+      },
+      quantization_config: {
+        scalar: {
+          type: "int8", // 8-bit quantization
+          quantile: 0.99,
+          always_ram: true,
+        },
+      },
     });
     console.log("Collection created.");
   }
@@ -42,12 +55,12 @@ export async function loadDocs(dir) {
   for (const f of files) {
     if (!f.endsWith(".pdf")) continue;
     const data = await pdf(await fs.readFile(path.join(dir, f)));
-    docs.push({ pageContent: data.text, metadata: { source: f } }); // <-- düzeltildi
+    docs.push({ pageContent: data.text, metadata: { source: f } });
   }
 
   const splitter = new RecursiveCharacterTextSplitter({
-    chunkSize: 2000,
-    chunkOverlap: 120,
+    chunkSize: 1000, // Daha küçük chunk'lar
+    chunkOverlap: 50, // Daha az overlap
     separators: ["\n", " "],
   });
 
@@ -63,10 +76,11 @@ export async function ingest(docs) {
     docs,
     embeddings,
     {
-      url: "http://localhost:6333",
+      url: "http://qdrant:6333",
       collectionName: COLLECTION,
+      batchSize: 100, // Batch işleme
     },
   );
   console.log(`✅  ${docs.length} parça yüklendi.`);
   return vectorStore;
-}
+} 

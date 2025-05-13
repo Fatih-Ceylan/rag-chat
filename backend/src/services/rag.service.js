@@ -1,22 +1,36 @@
-// rag_chat.js ---------------------------------------------------------------
+// rag.service.js ---------------------------------------------------------------
 import { QdrantVectorStore } from "@langchain/qdrant";
 import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/hf_transformers";
 import { Readable } from "node:stream";
 import { TextDecoder } from "node:util";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const COLLECTION = "student_services";
 const QDRANT_URL = "http://localhost:6333";
 const OLLAMA_URL = "http://localhost:11434/api/chat";
 
-// 1) Embedding nesnesi (aynen ingest'te kullandığın)
+// 1) Embedding nesnesi (daha hızlı model)
 const embeddings = new HuggingFaceTransformersEmbeddings({
-  modelName: "Xenova/e5-small-v2",
+  modelName: "Xenova/all-MiniLM-L6-v2", // Daha hızlı ve hafif model
+  cacheDir: path.join(__dirname, "../../.models"),
 });
 
 // 2) Qdrant vektör store – var olan koleksiyona bağlan
 const store = await QdrantVectorStore.fromExistingCollection(
   embeddings,
-  { url: QDRANT_URL, collectionName: COLLECTION },
+  { 
+    url: QDRANT_URL, 
+    collectionName: COLLECTION,
+    searchParams: {
+      limit: 2, // Daha az sonuç getir
+      score_threshold: 0.7, // Benzerlik eşiği
+      exact: false, // Yaklaşık arama
+    }
+  },
 );
 
 // 3) SSE'yi satır satır okumak için yardımcı
@@ -69,7 +83,7 @@ async function* streamToAsyncIterable(stream) {
 // 4) Ana fonksiyon
 export async function ask(question, history = []) {
   /*---------- 4.1 Bağlam getir ----------*/
-  const relDocs = await store.similaritySearch(question, 4);   // top-4
+  const relDocs = await store.similaritySearch(question, 2);   // top-2'ye düşürdük
   const context = relDocs.map(
     (d, i) => `### Kaynak ${i + 1}\n${d.pageContent.trim()}`
   ).join("\n\n");
@@ -81,9 +95,10 @@ export async function ask(question, history = []) {
       content:
 `Sen üniversite "Öğrenci İşleri" danışmanısın.
 Yanıtların TÜRKÇE olacak. Sadece verdiğim bağlamdaki
-bilgilere dayan. Kaynak yoksa "Bu konuda bilgim yok." de.`,
+bilgilere dayan. Kaynak yoksa "Bu konuda bilgim yok." de.
+Yanıtların kısa ve öz olsun.`,
     },
-    ...history,                                   // {role, content}...
+    ...history,
     {
       role: "user",
       content:
@@ -161,4 +176,4 @@ CEVAP (kısa ve net):`,
   } finally {
     reader.releaseLock();
   }
-}
+} 
