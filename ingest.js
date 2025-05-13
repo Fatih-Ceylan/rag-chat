@@ -10,9 +10,6 @@ const require = createRequire(import.meta.url);
 
 const pdf = require("pdf-parse");  
 
-
-
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
@@ -38,7 +35,7 @@ async function ensureCollection() {
 }
 
 // 3) Belge yükle & parçalara ayır
-async function loadDocs(dir) {
+export async function loadDocs(dir) {
   const files = await fs.readdir(dir);
   const docs = [];
 
@@ -60,7 +57,8 @@ async function loadDocs(dir) {
 }
 
 // 4) Vektör mağazasına ekle
-async function ingest(docs) {
+export async function ingest(docs) {
+  await ensureCollection();
   const vectorStore = await QdrantVectorStore.fromDocuments(
     docs,
     embeddings,
@@ -70,11 +68,5 @@ async function ingest(docs) {
     },
   );
   console.log(`✅  ${docs.length} parça yüklendi.`);
+  return vectorStore;
 }
-
-// ---- Çalıştır ----
-await ensureCollection();
-const docs = await loadDocs("./documents");
-console.log(`[Debug] Docs array after loading:`, docs);
-await ingest(docs);
-process.exit(0);

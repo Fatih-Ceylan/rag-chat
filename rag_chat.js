@@ -8,7 +8,7 @@ const COLLECTION = "student_services";
 const QDRANT_URL = "http://localhost:6333";
 const OLLAMA_URL = "http://localhost:11434/api/chat";
 
-// 1) Embedding nesnesi (aynen ingest’te kullandığın)
+// 1) Embedding nesnesi (aynen ingest'te kullandığın)
 const embeddings = new HuggingFaceTransformersEmbeddings({
   modelName: "Xenova/e5-small-v2",
 });
@@ -29,11 +29,13 @@ async function* streamToAsyncIterable(stream) {
     const parts = buffer.split('\n');
     buffer = parts.pop();
     for (const line of parts) {
+      console.log("[Debug] Stream line:", line);
       yield line;
     }
   }
   
   if (buffer) {
+    console.log("[Debug] Final buffer:", buffer);
     yield buffer;
   }
 }
@@ -51,9 +53,9 @@ export async function ask(question, history = []) {
     {
       role: "system",
       content:
-`Sen üniversite “Öğrenci İşleri” danışmanısın.
+`Sen üniversite "Öğrenci İşleri" danışmanısın.
 Yanıtların TÜRKÇE olacak. Sadece verdiğim bağlamdaki
-bilgilere dayan. Kaynak yoksa “Bu konuda bilgim yok.” de.`,
+bilgilere dayan. Kaynak yoksa "Bu konuda bilgim yok." de.`,
     },
     ...history,                                   // {role, content}...
     {
@@ -78,13 +80,22 @@ CEVAP (kısa ve net):`,
   const resp = await fetch(OLLAMA_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "deepseek-r1", messages, stream: true }),
+    body: JSON.stringify({ model: "llama3", messages, stream: true }),
   });
 
   console.log("[Debug] Ollama response status:", resp.status);
   console.log("[Debug] Ollama response headers:", Object.fromEntries(resp.headers.entries()));
 
-  // 4.4 – SSE akışını ileri döndür (for-await)
+  // Enhanced debug logging
+  console.log("[Debug] Full Ollama response:", {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: Object.fromEntries(resp.headers.entries()),
+    body: resp.body ? "Stream available" : "No stream",
+    type: resp.type,
+    url: resp.url
+  });
+
   if (!resp.body) {
     console.error("[Debug] No response body from Ollama!");
     throw new Error("Ollama akışı yok!");
