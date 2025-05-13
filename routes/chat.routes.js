@@ -4,26 +4,31 @@ import { ask } from '../rag_chat.js';
 const router = express.Router();
 
 router.post('/', async (req, res) => {
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  });
-
+  console.log('[Debug] Received chat request');
+  
+  // Set proper JSON response headers
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  
   const { question, history = [] } = req.body;
+  console.log('[Debug] Question:', question);
+  console.log('[Debug] History:', history);
+
   try {
-    const stream = await ask(question, history);
-    for await (const line of stream) {
-      if (!line.startsWith("data:")) continue;
-      const payload = JSON.parse(line.slice(5));
-      if (payload.message?.content) {
-        res.write(`data: ${payload.message.content}\n\n`);
-      }
-    }
-    res.end();
+    console.log('[Debug] Getting response from ask function');
+    const response = await ask(question, history);
+    
+    console.log('[Debug] Sending response to client');
+    res.json({ 
+      success: true, 
+      data: response
+    });
   } catch (e) {
-    res.write(`event: error\ndata: ${e.message}\n\n`);
-    res.end();
+    console.error('[Debug] Error in chat route:', e);
+    res.status(500).json({ 
+      success: false, 
+      error: e.message 
+    });
   }
 });
 
