@@ -10,6 +10,7 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [documents, setDocuments] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +63,15 @@ function App() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setLoadingProgress(0);
+
+    // Loading animasyonu için interval
+    const loadingInterval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + 10;
+      });
+    }, 500);
 
     try {
       console.log('[Debug] Sending request to chat endpoint');
@@ -100,7 +110,12 @@ function App() {
         content: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.' 
       }]);
     } finally {
-      setIsLoading(false);
+      clearInterval(loadingInterval);
+      setLoadingProgress(100);
+      setTimeout(() => {
+        setIsLoading(false);
+        setLoadingProgress(0);
+      }, 500);
     }
   };
 
@@ -133,6 +148,16 @@ function App() {
               <div className="message-content">{message.content}</div>
             </div>
           ))}
+          {isLoading && (
+            <div className="message assistant">
+              <div className="message-content">
+                <div className="loading-container">
+                  <div className="loading-bar" style={{ width: `${loadingProgress}%` }}></div>
+                  <div className="loading-text">Yanıt hazırlanıyor...</div>
+                </div>
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
         <form onSubmit={handleSubmit} className="input-form">
@@ -144,7 +169,7 @@ function App() {
             disabled={isLoading}
           />
           <button type="submit" disabled={isLoading}>
-            {isLoading ? 'Sending...' : 'Send'}
+            {isLoading ? 'Gönderiliyor...' : 'Gönder'}
           </button>
         </form>
       </div>

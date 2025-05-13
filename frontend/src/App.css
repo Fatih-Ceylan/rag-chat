@@ -190,3 +190,28 @@
   background-color: #93c5fd;
   cursor: not-allowed;
 }
+
+.loading-container {
+  width: 100%;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.loading-bar {
+  height: 4px;
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  border-radius: 2px;
+  transition: width 0.3s ease-in-out;
+}
+
+.loading-text {
+  margin-top: 8px;
+  color: #666;
+  font-size: 0.9em;
+  text-align: center;
+}
+
+.message.assistant .loading-container {
+  background: #f0f7ff;
+}
