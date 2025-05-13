@@ -4,10 +4,6 @@ import './App.css';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  sources?: Array<{
-    content: string;
-    metadata: any;
-  }>;
 }
 
 function App() {
@@ -92,8 +88,7 @@ function App() {
       if (data.success) {
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          content: data.data.content,
-          sources: data.data.sources
+          content: data.data.content
         }]);
       } else {
         throw new Error(data.error || 'Bir hata oluştu');
@@ -136,25 +131,6 @@ function App() {
           {messages.map((message, index) => (
             <div key={index} className={`message ${message.role}`}>
               <div className="message-content">{message.content}</div>
-              {message.sources && message.sources.length > 0 && (
-                <div className="message-sources">
-                  <h4>Kaynaklar:</h4>
-                  {message.sources.map((source, idx) => (
-                    <div key={idx} className="source">
-                      <div className="source-content">{source.content}</div>
-                      {source.metadata && (
-                        <div className="source-metadata">
-                          {Object.entries(source.metadata).map(([key, value]) => (
-                            <div key={key} className="metadata-item">
-                              <strong>{key}:</strong> {String(value)}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
           <div ref={messagesEndRef} />
