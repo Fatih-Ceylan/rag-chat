@@ -16,7 +16,6 @@ const __dirname = path.dirname(__filename);
 
 // Qdrant client
 const qdrant = new QdrantClient({ url: "http://localhost:6333" });
-const COLLECTION = "student_services";
 
 // Embeddings model
 const embeddings = new HuggingFaceTransformersEmbeddings({
@@ -29,70 +28,14 @@ function calculateHash(buffer) {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
-// 📊 Collection'daki mevcut hash'leri kontrol et
-async function checkExistingHashes() {
-  try {
-    const response = await qdrant.scroll(COLLECTION, {
-      limit: 1000,
-      with_payload: true,
-    });
-
-    const hashMap = new Map();
-    response.points.forEach(point => {
-      if (point.payload && point.payload.hash && point.payload.source) {
-        hashMap.set(point.payload.hash, point.payload.source);
-      }
-    });
-
-    console.log('\n📚 Mevcut PDF\'ler ve Hash\'leri:');
-    hashMap.forEach((source, hash) => {
-      console.log(`File: ${source}`);
-      console.log(`Hash: ${hash}\n`);
-    });
-
-    return hashMap;
-  } catch (error) {
-    console.error("Error checking existing hashes:", error);
-    return new Map();
-  }
-}
-
-// 🔍 Qdrant'ta aynı hash'e sahip doküman var mı kontrolü
-async function checkFileByHash(hash) {
-  try {
-    const response = await qdrant.scroll(COLLECTION, {
-      limit: 1,
-      with_payload: true,
-      filter: {
-        must: [
-          {
-            key: "hash",
-            match: {
-              value: hash
-            }
-          }
-        ]
-      }
-    });
-
-    if (response.points.length > 0) {
-      const existingFile = response.points[0].payload.source;
-      console.log(`⚠️ Aynı hash'e sahip dosya bulundu: ${existingFile}`);
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error("Error checking file by hash:", error);
-    return false;
-  }
-}
-
 // 📤 Ana yükleme fonksiyonu
-export async function uploadDocuments(dir) {
+export async function uploadDocuments(dir, university) {
   try {
+    const COLLECTION = `university_${university}`;
+    
     // Mevcut hash'leri kontrol et
-    console.log('Mevcut dosyaların hash\'leri kontrol ediliyor...');
-    await checkExistingHashes();
+    console.log(`${university} üniversitesi için mevcut dosyaların hash'leri kontrol ediliyor...`);
+    await checkExistingHashes(COLLECTION);
 
     const files = await fs.readdir(dir);
     const newFiles = [];
@@ -108,7 +51,7 @@ export async function uploadDocuments(dir) {
       console.log(`\n📄 İşleniyor: ${file}`);
       console.log(`🔑 Hash: ${fileHash}`);
 
-      const alreadyExists = await checkFileByHash(fileHash);
+      const alreadyExists = await checkFileByHash(fileHash, COLLECTION);
       if (alreadyExists) {
         console.log(`❌ Dosya zaten yüklü, atlanıyor: ${file}`);
         skippedFiles.push(file);
@@ -128,6 +71,7 @@ export async function uploadDocuments(dir) {
           source: file,
           hash: fileHash,
           uploadTime: new Date().toISOString(),
+          university: university,
           loc: {
             lines: {
               from: 1,
@@ -162,5 +106,58 @@ export async function uploadDocuments(dir) {
       success: false,
       error: error.message
     };
+  }
+}
+
+// 📊 Collection'daki mevcut hash'leri kontrol et
+async function checkExistingHashes(collection) {
+  try {
+    const response = await qdrant.scroll(collection, {
+      limit: 1000,
+      with_payload: true,
+    });
+
+    const hashMap = new Map();
+    response.points.forEach(point => {
+      if (point.payload && point.payload.metadata && point.payload.metadata.hash && point.payload.metadata.source) {
+        hashMap.set(point.payload.metadata.hash, point.payload.metadata.source);
+      }
+    });
+
+    console.log('\n📚 Mevcut PDF\'ler ve Hash\'leri:');
+    hashMap.forEach((source, hash) => {
+      console.log(`File: ${source}`);
+      console.log(`Hash: ${hash}\n`);
+    });
+
+    return hashMap;
+  } catch (error) {
+    console.error("Error checking existing hashes:", error);
+    return new Map();
+  }
+}
+
+// 🔍 Qdrant'ta aynı hash'e sahip doküman var mı kontrolü
+async function checkFileByHash(hash, collection) {
+  try {
+    const response = await qdrant.scroll(collection, {
+      limit: 1,
+      with_payload: true,
+      filter: {
+        must: [
+          {
+            key: "metadata.hash",
+            match: {
+              value: hash
+            }
+          }
+        ]
+      }
+    });
+
+    return response.points.length > 0;
+  } catch (error) {
+    console.error('Error checking file hash:', error);
+    return false;
   }
 }

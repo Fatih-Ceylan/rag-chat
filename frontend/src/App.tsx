@@ -6,12 +6,24 @@ interface Message {
   content: string;
 }
 
+interface University {
+  id: string;
+  name: string;
+}
+
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [documents, setDocuments] = useState<string[]>([]);
+  const [selectedUniversity, setSelectedUniversity] = useState<string>('');
+  const [universities] = useState<University[]>([
+    { id: 'arel', name: 'İstanbul Arel Üniversitesi' },
+    { id: 'selcuk', name: 'Selcuk Üniversitesi' },
+    { id: 'istanbul', name: 'İstanbul Üniversitesi' },
+    { id: 'marmara', name: 'Marmara Üniversitesi' }
+  ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -23,26 +35,40 @@ function App() {
   }, [messages]);
 
   useEffect(() => {
-    // Fetch documents on component mount
-    fetchDocuments();
-  }, []);
+    if (selectedUniversity) {
+      fetchDocuments();
+    }
+  }, [selectedUniversity]);
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch('http://localhost:4000/api/documents/list');
+      const response = await fetch(`http://localhost:4000/api/documents/list?university=${selectedUniversity}`);
       const data = await response.json();
       if (data.success) {
         setDocuments(data.documents);
+      } else {
+        console.error('Error fetching documents:', data.error);
+        setDocuments([]);
       }
     } catch (error) {
       console.error('Error fetching documents:', error);
+      setDocuments([]);
     }
   };
 
   const handleUpload = async () => {
+    if (!selectedUniversity) {
+      alert('Lütfen önce bir üniversite seçin');
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:4000/api/documents/upload', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ university: selectedUniversity })
       });
       const data = await response.json();
       
@@ -58,7 +84,7 @@ function App() {
           message = 'ℹ️ İşlenecek PDF dosyası bulunamadı.';
         }
         alert(message);
-        fetchDocuments(); // Refresh document list
+        fetchDocuments();
       } else {
         alert('❌ Dosya yükleme hatası: ' + (data.error || 'Bilinmeyen hata'));
       }
@@ -70,7 +96,7 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !selectedUniversity) return;
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
@@ -78,7 +104,6 @@ function App() {
     setIsLoading(true);
     setLoadingProgress(0);
 
-    // Loading animasyonu için interval
     const loadingInterval = setInterval(() => {
       setLoadingProgress(prev => {
         if (prev >= 90) return prev;
@@ -87,7 +112,6 @@ function App() {
     }, 500);
 
     try {
-      console.log('[Debug] Sending request to chat endpoint');
       const response = await fetch('http://localhost:4000/api/ask', {
         method: 'POST',
         headers: {
@@ -96,17 +120,15 @@ function App() {
         body: JSON.stringify({
           question: input,
           history: messages,
+          university: selectedUniversity
         }),
       });
-
-      console.log('[Debug] Response status:', response.status);
       
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
 
       const data = await response.json();
-      console.log('[Debug] Response data:', data);
 
       if (data.success) {
         setMessages(prev => [...prev, { 
@@ -117,7 +139,7 @@ function App() {
         throw new Error(data.error || 'Bir hata oluştu');
       }
     } catch (error) {
-      console.error('[Debug] Error:', error);
+      console.error('Error:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.' 
@@ -132,11 +154,44 @@ function App() {
     }
   };
 
+  if (!selectedUniversity) {
+    return (
+      <div className="university-selector">
+        <h2>Üniversite Seçin</h2>
+        <select 
+          value={selectedUniversity} 
+          onChange={(e) => setSelectedUniversity(e.target.value)}
+          className="university-select"
+        >
+          <option value="">Üniversite Seçin</option>
+          {universities.map(uni => (
+            <option key={uni.id} value={uni.id}>
+              {uni.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <div className="sidebar">
         <div className="sidebar-header">
           <h2>RAG Chat</h2>
+          <div className="university-info">
+            <select 
+              value={selectedUniversity} 
+              onChange={(e) => setSelectedUniversity(e.target.value)}
+              className="university-select"
+            >
+              {universities.map(uni => (
+                <option key={uni.id} value={uni.id}>
+                  {uni.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <button onClick={handleUpload} className="upload-button">
             Upload Documents
           </button>

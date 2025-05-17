@@ -123,7 +123,7 @@ CEVAP (kısa ve net):`,
   const resp = await fetch(OLLAMA_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "mistral:7b", messages, stream: true }),
+    body: JSON.stringify({ model: "gemma3:12b", messages, stream: true }),
   });
 
   console.log("[Debug] Ollama response status:", resp.status);

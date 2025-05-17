@@ -246,3 +246,43 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.university-selector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #f7fafc;
+}
+
+.university-selector h2 {
+  color: #2563eb;
+  margin-bottom: 20px;
+}
+
+.university-select {
+  padding: 12px;
+  font-size: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background-color: white;
+  min-width: 300px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.university-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.university-info {
+  margin-bottom: 15px;
+}
+
+.university-info .university-select {
+  width: 100%;
+  min-width: auto;
+}
