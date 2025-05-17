@@ -26,8 +26,8 @@ const store = await QdrantVectorStore.fromExistingCollection(
     url: QDRANT_URL, 
     collectionName: COLLECTION,
     searchParams: {
-      limit: 2, // Daha az sonuç getir
-      score_threshold: 0.7, // Benzerlik eşiği
+      limit: 8, // Daha fazla sonuç getir
+      score_threshold: 0.4, // Daha düşük benzerlik eşiği
       exact: false, // Yaklaşık arama
     }
   },
@@ -83,9 +83,10 @@ async function* streamToAsyncIterable(stream) {
 // 4) Ana fonksiyon
 export async function ask(question, history = []) {
   /*---------- 4.1 Bağlam getir ----------*/
-  const relDocs = await store.similaritySearch(question, 2);   // top-2'ye düşürdük
+  const relDocs = await store.similaritySearch(question, 8);   // Daha fazla sonuç
   const context = relDocs.map(
-    (d, i) => `### Kaynak ${i + 1}\n${d.pageContent.trim()}`
+    (d, i) => `### Kaynak ${i + 1} (Benzerlik: ${(d.metadata.score * 100).toFixed(1)}%)
+${d.pageContent.trim()}`
   ).join("\n\n");
 
   /*---------- 4.2 Mesaj dizisi ----------*/
@@ -96,7 +97,8 @@ export async function ask(question, history = []) {
 `Sen üniversite "Öğrenci İşleri" danışmanısın.
 Yanıtların TÜRKÇE olacak. Sadece verdiğim bağlamdaki
 bilgilere dayan. Kaynak yoksa "Bu konuda bilgim yok." de.
-Yanıtların kısa ve öz olsun.`,
+Yanıtların kısa ve net olsun. Tüm kaynakları dikkatlice
+incele ve en doğru bilgiyi seç.`,
     },
     ...history,
     {
@@ -121,7 +123,7 @@ CEVAP (kısa ve net):`,
   const resp = await fetch(OLLAMA_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "gemma3:12b", messages, stream: true }),
+    body: JSON.stringify({ model: "mistral:7b", messages, stream: true }),
   });
 
   console.log("[Debug] Ollama response status:", resp.status);

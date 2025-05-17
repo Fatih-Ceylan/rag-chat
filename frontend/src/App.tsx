@@ -45,13 +45,26 @@ function App() {
         method: 'POST',
       });
       const data = await response.json();
+      
       if (data.success) {
-        alert('Documents processed successfully');
+        let message = '';
+        if (data.newFiles && data.newFiles.length > 0) {
+          message += `✅ Yeni yüklenen dosyalar:\n${data.newFiles.join('\n')}\n\n`;
+        }
+        if (data.skippedFiles && data.skippedFiles.length > 0) {
+          message += `⚠️ Zaten yüklü olan dosyalar (hash kontrolü):\n${data.skippedFiles.join('\n')}`;
+        }
+        if (!data.newFiles?.length && !data.skippedFiles?.length) {
+          message = 'ℹ️ İşlenecek PDF dosyası bulunamadı.';
+        }
+        alert(message);
         fetchDocuments(); // Refresh document list
+      } else {
+        alert('❌ Dosya yükleme hatası: ' + (data.error || 'Bilinmeyen hata'));
       }
     } catch (error) {
       console.error('Error uploading documents:', error);
-      alert('Error processing documents');
+      alert('❌ Dosya yükleme sırasında bir hata oluştu');
     }
   };
 

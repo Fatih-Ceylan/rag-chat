@@ -1,5 +1,5 @@
 import express from 'express';
-import { ingest } from '../services/ingest.service.js';
+import { uploadDocuments } from '../services/ingest.service.js';
 import { ask } from '../services/rag.service.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -24,14 +24,17 @@ router.get('/documents/list', async (req, res) => {
 });
 
 // PDF yükleme endpoint'i
-router.post('/upload', async (req, res) => {
+router.post('/documents/upload', async (req, res) => {
   try {
-    const docs = await ingest.loadDocs(path.join(__dirname, '../../../documents'));
-    await ingest(docs);
-    res.json({ success: true, message: 'PDFs başarıyla yüklendi' });
+    const docsDir = path.join(__dirname, '../../../documents');
+    const result = await uploadDocuments(docsDir);
+    res.json(result);
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      error: error.message
+    });
   }
 });
 
