@@ -14,7 +14,6 @@ interface University {
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [documents, setDocuments] = useState<string[]>([]);
   const [selectedUniversity, setSelectedUniversity] = useState<string>('');
@@ -25,6 +24,9 @@ function App() {
     { id: 'marmara', name: 'Marmara Üniversitesi' }
   ]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isAsking, setIsAsking] = useState(false);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -41,6 +43,7 @@ function App() {
   }, [selectedUniversity]);
 
   const fetchDocuments = async () => {
+    setIsLoadingDocuments(true);
     try {
       const response = await fetch(`http://localhost:4000/api/documents/list?university=${selectedUniversity}`);
       const data = await response.json();
@@ -53,6 +56,8 @@ function App() {
     } catch (error) {
       console.error('Error fetching documents:', error);
       setDocuments([]);
+    } finally {
+      setIsLoadingDocuments(false);
     }
   };
 
@@ -61,6 +66,8 @@ function App() {
       alert('Lütfen önce bir üniversite seçin');
       return;
     }
+
+    setIsUploading(true);
 
     try {
       const response = await fetch('http://localhost:4000/api/documents/upload', {
@@ -91,6 +98,8 @@ function App() {
     } catch (error) {
       console.error('Error uploading documents:', error);
       alert('❌ Dosya yükleme sırasında bir hata oluştu');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -101,7 +110,7 @@ function App() {
     const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
-    setIsLoading(true);
+    setIsAsking(true);
     setLoadingProgress(0);
 
     const loadingInterval = setInterval(() => {
@@ -148,7 +157,7 @@ function App() {
       clearInterval(loadingInterval);
       setLoadingProgress(100);
       setTimeout(() => {
-        setIsLoading(false);
+        setIsAsking(false);
         setLoadingProgress(0);
       }, 500);
     }
@@ -192,13 +201,19 @@ function App() {
               ))}
             </select>
           </div>
-          <button onClick={handleUpload} className="upload-button">
-            Upload Documents
+          <button onClick={handleUpload} className="upload-button" disabled={isUploading || !selectedUniversity}>
+            {isUploading ? (
+              <span className="loading-spinner">⏳</span>
+            ) : (
+              "Upload Documents"
+            )}
           </button>
         </div>
         <div className="documents-list">
           <h3>İşlenmiş PDF'ler</h3>
-          {documents.length === 0 ? (
+          {isLoadingDocuments ? (
+            <div className="loading-spinner">⏳</div>
+          ) : documents.length === 0 ? (
             <p className="no-documents">Henüz işlenmiş PDF yok</p>
           ) : (
             <ul>
@@ -219,7 +234,7 @@ function App() {
               <div className="message-content">{message.content}</div>
             </div>
           ))}
-          {isLoading && (
+          {isAsking && (
             <div className="message assistant">
               <div className="message-content">
                 <div className="loading-container">
@@ -237,10 +252,10 @@ function App() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
-            disabled={isLoading}
+            disabled={isAsking || !selectedUniversity}
           />
-          <button type="submit" disabled={isLoading}>
-            {isLoading ? 'Gönderiliyor...' : 'Gönder'}
+          <button type="submit" disabled={isAsking || !input.trim() || !selectedUniversity}>
+            {isAsking ? <span className="loading-spinner">⏳</span> : 'Gönder'}
           </button>
         </form>
       </div>
