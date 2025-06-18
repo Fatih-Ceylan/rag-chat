@@ -312,3 +312,43 @@ button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+.chat-header {
+  padding: 15px 20px;
+  background-color: white;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 8px 8px 0 0;
+}
+
+.chat-header h3 {
+  margin: 0 0 8px 0;
+  color: #2563eb;
+  font-size: 1.2rem;
+}
+
+.chat-info {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.welcome-message {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-message h4 {
+  margin: 0 0 10px 0;
+  font-size: 1.3rem;
+}
+
+.welcome-message p {
+  margin: 8px 0;
+  opacity: 0.95;
+}

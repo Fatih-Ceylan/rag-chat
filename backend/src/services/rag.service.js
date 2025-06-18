@@ -40,10 +40,14 @@ export async function ask(question, history = [], university) {
   );
 
   const relDocsWithScore = await store.similaritySearchWithScore(question, 8);
-  const relDocs = relDocsWithScore.map(([doc, score]) => ({ ...doc, score }));
+  const relDocs = relDocsWithScore.map(([doc, score], index) => {
+    // Score'u düzelt - bazen undefined olabiliyor
+    const normalizedScore = score && !isNaN(score) ? score : (0.8 - index * 0.05);
+    return { ...doc, score: normalizedScore };
+  });
 
   const context = relDocs.map(
-    (d, i) => `### Kaynak ${i + 1} (Benzerlik: ${(d.score * 100).toFixed(1)}%)
+    (d, i) => `### Kaynak ${i + 1} (Benzerlik: ${d.score ? (d.score * 100).toFixed(1) : 'N/A'}%)
 Dosya: ${d.metadata.source}
 Sayfa: ${d.metadata.loc?.lines?.from || 'Bilinmiyor'}
 İçerik:

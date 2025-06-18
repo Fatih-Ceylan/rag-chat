@@ -12,7 +12,8 @@ interface University {
 }
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Her üniversite için ayrı chat history
+  const [universityMessages, setUniversityMessages] = useState<Record<string, Message[]>>({});
   const [input, setInput] = useState('');
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [documents, setDocuments] = useState<string[]>([]);
@@ -28,6 +29,9 @@ function App() {
   const [isAsking, setIsAsking] = useState(false);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
 
+  // Mevcut üniversite için mesajları al
+  const messages = universityMessages[selectedUniversity] || [];
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -39,6 +43,13 @@ function App() {
   useEffect(() => {
     if (selectedUniversity) {
       fetchDocuments();
+      // Eğer bu üniversite için mesaj yoksa boş array oluştur
+      if (!universityMessages[selectedUniversity]) {
+        setUniversityMessages(prev => ({
+          ...prev,
+          [selectedUniversity]: []
+        }));
+      }
     }
   }, [selectedUniversity]);
 
@@ -108,7 +119,11 @@ function App() {
     if (!input.trim() || !selectedUniversity) return;
 
     const userMessage: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+    // Seçili üniversite için mesaj ekle
+    setUniversityMessages(prev => ({
+      ...prev,
+      [selectedUniversity]: [...(prev[selectedUniversity] || []), userMessage]
+    }));
     setInput('');
     setIsAsking(true);
     setLoadingProgress(0);
@@ -128,7 +143,7 @@ function App() {
         },
         body: JSON.stringify({
           question: input,
-          history: messages,
+          history: messages, // Bu artık seçili üniversitenin mesajları
           university: selectedUniversity
         }),
       });
@@ -140,19 +155,27 @@ function App() {
       const data = await response.json();
 
       if (data.success) {
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: data.content
-        }]);
+        // Seçili üniversite için assistant mesajı ekle
+        setUniversityMessages(prev => ({
+          ...prev,
+          [selectedUniversity]: [...(prev[selectedUniversity] || []), {
+            role: 'assistant',
+            content: data.content
+          }]
+        }));
       } else {
         throw new Error(data.error || 'Bir hata oluştu');
       }
     } catch (error) {
       console.error('Error:', error);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.' 
-      }]);
+      // Hata mesajını da seçili üniversite için ekle
+      setUniversityMessages(prev => ({
+        ...prev,
+        [selectedUniversity]: [...(prev[selectedUniversity] || []), {
+          role: 'assistant',
+          content: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.'
+        }]
+      }));
     } finally {
       clearInterval(loadingInterval);
       setLoadingProgress(100);
@@ -210,11 +233,11 @@ function App() {
           </button>
         </div>
         <div className="documents-list">
-          <h3>İşlenmiş PDF'ler</h3>
+          <h3>Yüklenmiş PDF'ler</h3>
           {isLoadingDocuments ? (
             <div className="loading-spinner">⏳</div>
           ) : documents.length === 0 ? (
-            <p className="no-documents">Henüz işlenmiş PDF yok</p>
+            <p className="no-documents">Henüz yüklenmiş PDF yok</p>
           ) : (
             <ul>
               {documents.map((doc, index) => (
@@ -228,7 +251,20 @@ function App() {
         </div>
       </div>
       <div className="chat-container">
+        <div className="chat-header">
+          <h3>{universities.find(u => u.id === selectedUniversity)?.name} - Chat</h3>
+          <p className="chat-info">Bu chat geçmişi sadece seçili üniversiteye aittir. Üniversite değiştirdiğinizde farklı chat geçmişi görürsünüz.</p>
+        </div>
         <div className="messages">
+          {messages.length === 0 && (
+            <div className="welcome-message">
+              <h4>🎓 {universities.find(u => u.id === selectedUniversity)?.name} Öğrenci İşleri Asistanı</h4>
+              <p>Merhaba! Size nasıl yardımcı olabilirim? Üniversite ile ilgili sorularınızı sorabilirsiniz.</p>
+              {documents.length > 0 && (
+                <p><strong>📚 Yüklü dokümanlar:</strong> {documents.length} PDF dosyası</p>
+              )}
+            </div>
+          )}
           {messages.map((message, index) => (
             <div key={index} className={`message ${message.role}`}>
               <div className="message-content">{message.content}</div>
@@ -251,7 +287,7 @@ function App() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
+            placeholder={`${universities.find(u => u.id === selectedUniversity)?.name} hakkında soru sorun...`}
             disabled={isAsking || !selectedUniversity}
           />
           <button type="submit" disabled={isAsking || !input.trim() || !selectedUniversity}>
