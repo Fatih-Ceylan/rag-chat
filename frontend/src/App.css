@@ -342,14 +342,7 @@
   100% { transform: rotate(360deg); }
 }
 
-.upload-message {
-  margin-top: 10px;
-  padding: 10px;
-  border-radius: 4px;
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  white-space: pre-line;
-}
+
 
 button:disabled {
   opacity: 0.7;

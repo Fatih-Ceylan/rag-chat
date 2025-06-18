@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "ingest": "node ingest.js",
-    "test-turkish": "node test-turkish.js"
+    "start": "node backend/src/server.js",
+    "ingest": "node ingest.js"
   },
   "engines": {
     "node": ">=18"

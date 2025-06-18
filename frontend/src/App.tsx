@@ -12,7 +12,7 @@ interface University {
 }
 
 function App() {
-  // Her üniversite için ayrı chat history
+  // Her üniversite için ayrı chat history tutma
   const [universityMessages, setUniversityMessages] = useState<Record<string, Message[]>>({});
   const [input, setInput] = useState('');
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -40,15 +40,12 @@ function App() {
     scrollToBottom();
   }, [messages]);
 
+  // Üniversite değiştiğinde dokümanları yükle ve chat history'yi başlat
   useEffect(() => {
     if (selectedUniversity) {
       fetchDocuments();
-      // Eğer bu üniversite için mesaj yoksa boş array oluştur
       if (!universityMessages[selectedUniversity]) {
-        setUniversityMessages(prev => ({
-          ...prev,
-          [selectedUniversity]: []
-        }));
+        setUniversityMessages(prev => ({ ...prev, [selectedUniversity]: [] }));
       }
     }
   }, [selectedUniversity]);
@@ -58,31 +55,19 @@ function App() {
     try {
       const response = await fetch(`http://localhost:4000/api/documents/list?university=${selectedUniversity}`);
       const data = await response.json();
-      if (data.success) {
-        setDocuments(data.documents);
-      } else {
-        console.error('Error fetching documents:', data.error);
-        setDocuments([]);
-      }
+      setDocuments(data.success ? data.documents : []);
     } catch (error) {
-      console.error('Error fetching documents:', error);
       setDocuments([]);
     } finally {
       setIsLoadingDocuments(false);
     }
   };
 
+  // PDF dosyasını yeni sekmede açma (popup blocker bypass)
   const handlePdfClick = (filename: string) => {
-    if (!selectedUniversity) {
-      alert('Lütfen önce bir üniversite seçin');
-      return;
-    }
+    if (!selectedUniversity) return alert('Lütfen önce bir üniversite seçin');
 
-    // PDF'i yeni sekmede aç
-    const pdfUrl = `http://localhost:4001/api/documents/pdf/${selectedUniversity}/${encodeURIComponent(filename)}`;
-    console.log('PDF açılıyor:', pdfUrl);
-
-    // Popup blocker'ı bypass etmek için link oluştur ve tıkla
+    const pdfUrl = `http://localhost:4002/api/documents/pdf/${selectedUniversity}/${encodeURIComponent(filename)}`;
     const link = document.createElement('a');
     link.href = pdfUrl;
     link.target = '_blank';
@@ -134,61 +119,41 @@ function App() {
     }
   };
 
+  // Soru gönderme ve RAG sistemi ile yanıt alma
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !selectedUniversity) return;
 
+    // Kullanıcı mesajını seçili üniversitenin chat'ine ekle
     const userMessage: Message = { role: 'user', content: input };
-    // Seçili üniversite için mesaj ekle
     setUniversityMessages(prev => ({
       ...prev,
       [selectedUniversity]: [...(prev[selectedUniversity] || []), userMessage]
     }));
     setInput('');
     setIsAsking(true);
-    setLoadingProgress(0);
 
+    // Loading progress animasyonu
     const loadingInterval = setInterval(() => {
-      setLoadingProgress(prev => {
-        if (prev >= 90) return prev;
-        return prev + 10;
-      });
+      setLoadingProgress(prev => prev >= 90 ? prev : prev + 10);
     }, 500);
 
     try {
       const response = await fetch('http://localhost:4000/api/ask', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: input,
-          history: messages, // Bu artık seçili üniversitenin mesajları
-          university: selectedUniversity
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: input, history: messages, university: selectedUniversity }),
       });
-      
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
 
+      if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
 
-      if (data.success) {
-        // Seçili üniversite için assistant mesajı ekle
-        setUniversityMessages(prev => ({
-          ...prev,
-          [selectedUniversity]: [...(prev[selectedUniversity] || []), {
-            role: 'assistant',
-            content: data.content
-          }]
-        }));
-      } else {
-        throw new Error(data.error || 'Bir hata oluştu');
-      }
+      const assistantMessage: Message = { role: 'assistant', content: data.success ? data.content : 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.' };
+      setUniversityMessages(prev => ({
+        ...prev,
+        [selectedUniversity]: [...(prev[selectedUniversity] || []), assistantMessage]
+      }));
     } catch (error) {
-      console.error('Error:', error);
-      // Hata mesajını da seçili üniversite için ekle
       setUniversityMessages(prev => ({
         ...prev,
         [selectedUniversity]: [...(prev[selectedUniversity] || []), {
