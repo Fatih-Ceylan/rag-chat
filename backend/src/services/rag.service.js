@@ -11,9 +11,9 @@ const __dirname = path.dirname(__filename);
 const QDRANT_URL = "http://localhost:6333";
 const OLLAMA_URL = "http://localhost:11434/api/chat";
 
-// 1) Embedding nesnesi (daha hızlı model)
+// 1) Embedding nesnesi (Türkçe destekli çok dilli model)
 const embeddings = new HuggingFaceTransformersEmbeddings({
-  modelName: "Xenova/all-MiniLM-L6-v2",
+  modelName: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
   cacheDir: path.join(__dirname, "../../.models"),
 });
 
@@ -32,16 +32,18 @@ export async function ask(question, history = [], university) {
       url: QDRANT_URL, 
       collectionName: COLLECTION,
       searchParams: {
-        limit: 5, // Daha az ama daha alakalı sonuç
-        score_threshold: 0.9, // Daha yüksek benzerlik eşiği
+        limit: 8, // Türkçe için daha fazla sonuç
+        score_threshold: 0.5, // Türkçe için daha düşük eşik
         exact: false,
       }
     },
   );
 
-  const relDocs = await store.similaritySearch(question, 5);
+  const relDocsWithScore = await store.similaritySearchWithScore(question, 8);
+  const relDocs = relDocsWithScore.map(([doc, score]) => ({ ...doc, score }));
+
   const context = relDocs.map(
-    (d, i) => `### Kaynak ${i + 1} (Benzerlik: ${(d.metadata.score * 100).toFixed(1)}%)
+    (d, i) => `### Kaynak ${i + 1} (Benzerlik: ${(d.score * 100).toFixed(1)}%)
 Dosya: ${d.metadata.source}
 Sayfa: ${d.metadata.loc?.lines?.from || 'Bilinmiyor'}
 İçerik:
@@ -120,7 +122,7 @@ CEVAP (anlaşılabilir ve net:`,
         metadata: {
           source: doc.metadata.source,
           page: doc.metadata.loc?.lines?.from,
-          score: doc.metadata.score
+          score: doc.score
         }
       }))
     };

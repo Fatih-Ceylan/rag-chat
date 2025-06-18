@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "ingest": "node ingest.js"
+    "ingest": "node ingest.js",
+    "test-turkish": "node test-turkish.js"
   },
   "engines": {
     "node": ">=18"

@@ -17,9 +17,9 @@ const __dirname = path.dirname(__filename);
 // Qdrant client
 const qdrant = new QdrantClient({ url: "http://localhost:6333" });
 
-// Embeddings model
+// Embeddings model (Türkçe destekli çok dilli model)
 const embeddings = new HuggingFaceTransformersEmbeddings({
-  modelName: "Xenova/all-MiniLM-L6-v2",
+  modelName: "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
   cacheDir: path.join(__dirname, "../../.models"),
 });
 
@@ -61,8 +61,9 @@ export async function uploadDocuments(dir, university) {
       // PDF içeriğini ayrıştır
       const pdfData = await pdf(fileBuffer);
       const splitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 1000,
-        chunkOverlap: 50,
+        chunkSize: 800, // Türkçe için daha küçük chunk
+        chunkOverlap: 100, // Daha fazla overlap
+        separators: ["\n\n", "\n", ". ", "! ", "? ", " "], // Türkçe noktalama
       });
 
       const docs = await splitter.splitDocuments([{
