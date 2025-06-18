@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import './App.css';
 
 interface Message {
@@ -30,11 +30,24 @@ function App() {
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
 
   // Mevcut üniversite için mesajları al
-  const messages = universityMessages[selectedUniversity] || [];
+  const messages = useMemo(() => universityMessages[selectedUniversity] || [], [universityMessages, selectedUniversity]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const fetchDocuments = useCallback(async () => {
+    setIsLoadingDocuments(true);
+    try {
+      const response = await fetch(`http://localhost:4000/api/documents/list?university=${selectedUniversity}`);
+      const data = await response.json();
+      setDocuments(data.success ? data.documents : []);
+    } catch {
+      setDocuments([]);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  }, [selectedUniversity]);
 
   useEffect(() => {
     scrollToBottom();
@@ -48,20 +61,7 @@ function App() {
         setUniversityMessages(prev => ({ ...prev, [selectedUniversity]: [] }));
       }
     }
-  }, [selectedUniversity]);
-
-  const fetchDocuments = async () => {
-    setIsLoadingDocuments(true);
-    try {
-      const response = await fetch(`http://localhost:4000/api/documents/list?university=${selectedUniversity}`);
-      const data = await response.json();
-      setDocuments(data.success ? data.documents : []);
-    } catch (error) {
-      setDocuments([]);
-    } finally {
-      setIsLoadingDocuments(false);
-    }
-  };
+  }, [selectedUniversity, universityMessages, fetchDocuments]);
 
   // PDF dosyasını yeni sekmede açma (popup blocker bypass)
   const handlePdfClick = (filename: string) => {
@@ -153,7 +153,7 @@ function App() {
         ...prev,
         [selectedUniversity]: [...(prev[selectedUniversity] || []), assistantMessage]
       }));
-    } catch (error) {
+    } catch {
       setUniversityMessages(prev => ({
         ...prev,
         [selectedUniversity]: [...(prev[selectedUniversity] || []), {
