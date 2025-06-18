@@ -72,6 +72,26 @@ function App() {
     }
   };
 
+  const handlePdfClick = (filename: string) => {
+    if (!selectedUniversity) {
+      alert('Lütfen önce bir üniversite seçin');
+      return;
+    }
+
+    // PDF'i yeni sekmede aç
+    const pdfUrl = `http://localhost:4001/api/documents/pdf/${selectedUniversity}/${encodeURIComponent(filename)}`;
+    console.log('PDF açılıyor:', pdfUrl);
+
+    // Popup blocker'ı bypass etmek için link oluştur ve tıkla
+    const link = document.createElement('a');
+    link.href = pdfUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleUpload = async () => {
     if (!selectedUniversity) {
       alert('Lütfen önce bir üniversite seçin');
@@ -241,9 +261,10 @@ function App() {
           ) : (
             <ul>
               {documents.map((doc, index) => (
-                <li key={index} className="document-item">
+                <li key={index} className="document-item clickable" onClick={() => handlePdfClick(doc)} title={`${doc} dosyasını açmak için tıklayın`}>
                   <span className="document-icon">📄</span>
                   <span className="document-name">{doc}</span>
+                  <span className="document-action">🔗 Aç</span>
                 </li>
               ))}
             </ul>

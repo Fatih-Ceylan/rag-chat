@@ -229,11 +229,35 @@
   background-color: #f3f4f6;
   color: #4b5563;
   font-size: 0.9rem;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  position: relative;
 }
 
 .document-item:hover {
   background-color: #e5e7eb;
+}
+
+.document-item.clickable {
+  cursor: pointer;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+.document-item.clickable:hover {
+  background-color: #dbeafe;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.15);
+}
+
+.document-item.clickable:active {
+  transform: translateY(0);
+  background-color: #bfdbfe;
+}
+
+.document-item.clickable:hover .document-name {
+  color: #1d4ed8;
+  font-weight: 500;
 }
 
 .document-icon {
@@ -242,9 +266,28 @@
 }
 
 .document-name {
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-right: 8px;
+}
+
+.document-action {
+  opacity: 0.6;
+  transition: all 0.2s;
+  font-size: 0.8rem;
+  color: #3b82f6;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.document-item.clickable:hover .document-action {
+  opacity: 1;
+  background-color: rgba(59, 130, 246, 0.2);
+  transform: scale(1.05);
 }
 
 .university-selector {
