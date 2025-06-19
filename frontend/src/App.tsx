@@ -77,46 +77,94 @@ function App() {
     document.body.removeChild(link);
   };
 
-  const handleUpload = async () => {
+
+
+  // Basit dosya yükleme fonksiyonu (sadece vektör DB hash kontrolü)
+  const handleFileUpload = () => {
     if (!selectedUniversity) {
       alert('Lütfen önce bir üniversite seçin');
       return;
     }
 
-    setIsUploading(true);
+    // File input oluştur
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const files = (e.target as HTMLInputElement).files;
 
-    try {
-      const response = await fetch('http://localhost:4000/api/documents/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ university: selectedUniversity })
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        let message = '';
-        if (data.newFiles && data.newFiles.length > 0) {
-          message += `✅ Yeni yüklenen dosyalar:\n${data.newFiles.join('\n')}\n\n`;
-        }
-        if (data.skippedFiles && data.skippedFiles.length > 0) {
-          message += `⚠️ Zaten yüklü olan dosyalar (hash kontrolü):\n${data.skippedFiles.join('\n')}`;
-        }
-        if (!data.newFiles?.length && !data.skippedFiles?.length) {
-          message = 'ℹ️ İşlenecek PDF dosyası bulunamadı.';
-        }
-        alert(message);
-        fetchDocuments();
-      } else {
-        alert('❌ Dosya yükleme hatası: ' + (data.error || 'Bilinmeyen hata'));
+      if (!files || files.length === 0) {
+        alert('Lütfen en az bir PDF dosyası seçin');
+        return;
       }
-    } catch (error) {
-      console.error('Error uploading documents:', error);
-      alert('❌ Dosya yükleme sırasında bir hata oluştu');
-    } finally {
-      setIsUploading(false);
-    }
+
+      setIsUploading(true);
+      try {
+        // Dosya boyutu kontrolü (max 10MB per file)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        const oversizedFiles = Array.from(files).filter(f => f.size > maxSize);
+        if (oversizedFiles.length > 0) {
+          alert(`❌ Çok büyük dosyalar (max 10MB):\n${oversizedFiles.map(f => `${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)`).join('\n')}`);
+          return;
+        }
+
+        // Dosyaları base64'e çevir (güvenli yöntem)
+        const fileData = await Promise.all(
+          Array.from(files).map(async (file) => {
+            return new Promise<{name: string, data: string, size: number}>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                try {
+                  const result = reader.result as string;
+                  // data:application/pdf;base64, kısmını kaldır
+                  const base64 = result.split(',')[1];
+                  resolve({
+                    name: file.name,
+                    data: base64,
+                    size: file.size
+                  });
+                } catch (error) {
+                  reject(error);
+                }
+              };
+              reader.onerror = () => reject(reader.error);
+              reader.readAsDataURL(file);
+            });
+          })
+        );
+
+        // Upload endpoint'e gönder
+        const response = await fetch('http://localhost:4000/api/documents/upload-combined', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ university: selectedUniversity, files: fileData }),
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          let message = `✅ ${result.message}`;
+          if (result.newFiles && result.newFiles.length > 0) {
+            message += `\n\n📄 Yeni dosyalar:\n${result.newFiles.join('\n')}`;
+          }
+          if (result.skippedFiles && result.skippedFiles.length > 0) {
+            message += `\n\n⏭️ Atlanan dosyalar (zaten mevcut):\n${result.skippedFiles.join('\n')}`;
+          }
+          if (result.errorFiles && result.errorFiles.length > 0) {
+            message += `\n\n❌ Hatalı dosyalar:\n${result.errorFiles.map((f: any) => `${f.name}: ${f.error}`).join('\n')}`;
+          }
+          alert(message);
+          fetchDocuments(); // Listeyi yenile
+        } else {
+          alert(`❌ İşlem hatası: ${result.error}`);
+        }
+      } catch (error) {
+        alert(`❌ İşlem hatası: ${error}`);
+      } finally {
+        setIsUploading(false);
+      }
+    };
+    input.click();
   };
 
   // Soru gönderme ve RAG sistemi ile yanıt alma
@@ -209,7 +257,7 @@ function App() {
               ))}
             </select>
           </div>
-          <button onClick={handleUpload} className="upload-button" disabled={isUploading || !selectedUniversity}>
+          <button onClick={handleFileUpload} className="upload-button" disabled={isUploading || !selectedUniversity}>
             {isUploading ? (
               <span className="loading-spinner">⏳</span>
             ) : (

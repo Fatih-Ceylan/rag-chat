@@ -84,6 +84,15 @@
   background-color: #1d4ed8;
 }
 
+.upload-button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.upload-button:disabled:hover {
+  background-color: #9ca3af;
+}
+
 .documents-list {
   flex: 1;
   overflow-y: auto;
